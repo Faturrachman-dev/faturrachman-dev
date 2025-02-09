@@ -1,8 +1,11 @@
-## Hi there 👋
+## Hi everyone 👋
 
-🌱 I'm currently studying Machine Learning!
+🔥 Machine Learning Engineer Trainee at Dicoding Indonesia
 
-💬 Let's connect and learn together!
+🤖 Currently learning AI Development and Engineering
+
+😊 I'm happy to connect & discuss
+
 <!--
 **Faturrachman-dev/faturrachman-dev** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 
