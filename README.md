@@ -1,9 +1,9 @@
+https://readme-typing-svg.herokuapp.com/demo/?color=7B00F7&lines=Visitor+Counter
+
 ## Hi everyone 👋
 
 🔥 Machine Learning Engineer Trainee at Dicoding Indonesia
-
 🤖 Currently learning AI Development and Engineering
-
 😊 I'm happy to connect & discuss
 
 <!--
