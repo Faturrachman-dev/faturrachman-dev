@@ -1,3 +1,5 @@
+![GitHub Stats](https://github-readme-stats.vercel.app/api?username=faturrachman-dev)
+
 ## Hi everyone 👋
 
 🔥 Machine Learning Engineer Trainee at Dicoding Indonesia
