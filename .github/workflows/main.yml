@@ -17,9 +17,9 @@ jobs:
       - name: Update README
         run: |
           if grep -q "<!-- TODAY_COMMITS -->" README.md; then
-            sed -i "s/<!-- TODAY_COMMITS -->/${{ env.TODAY_COMMITS }}/g" README.md
+            sed -i "s|\(https://img.shields.io/badge/Today's%20Commits-.*-blue\)|\1${{ env.TODAY_COMMITS }}-blue|g" README.md
           else
-            echo "Today's Commits: ${{ env.TODAY_COMMITS }}" >> README.md
+            echo "![Today's Commits](https://img.shields.io/badge/Today's%20Commits-${{ env.TODAY_COMMITS }}-blue)" >> README.md
           fi
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
