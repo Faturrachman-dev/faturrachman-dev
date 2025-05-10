@@ -21,27 +21,40 @@ jobs:
 
       - name: Get Today's Commits Across All Repositories
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_COUNTER_TOKEN: ${{ secrets.COMMIT_COUNTER_TOKEN }}
         run: |
-          # Calculate the start of the current day in UTC
-          TODAY_START=$(date -u +%Y-%m-%dT00:00:00Z)
-          echo "Counting commits since: $TODAY_START"
+          # Calculate the start of the current day in WIB (UTC+7)
+          TODAY_START=$(TZ=Asia/Jakarta date +%Y-%m-%d)
+          TODAY_START_UTC=$(date -u -d "$TODAY_START 00:00:00 Asia/Jakarta" +%Y-%m-%dT%H:%M:%SZ)
+          echo "Counting commits since: $TODAY_START_UTC (00:00 WIB)"
 
           # Get the list of repositories for the user with pagination
           PAGE=1
           REPOS=""
+          RETRY_COUNT=0
           while true; do
-            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            RESPONSE=$(curl -s -D headers.txt -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/users/Faturrachman-dev/repos?per_page=100&page=$PAGE")
+            if [[ $? -ne 0 ]]; then
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [[ $RETRY_COUNT -gt 3 ]]; then
+                echo "Error: Failed to fetch repositories after 3 retries"
+                exit 1
+              fi
+              echo "Retrying repository list fetch ($RETRY_COUNT/3)..."
+              sleep 5
+              continue
+            fi
             NEW_REPOS=$(echo "$RESPONSE" | jq -r '.[].name' | tr '\n' ' ')
             REPOS="$REPOS $NEW_REPOS"
-            LINK=$(curl -s -I -H "Authorization: Bearer $GITHUB_TOKEN" \
-              "https://api.github.com/users/Faturrachman-dev/repos?per_page=100&page=$PAGE" | grep -i '^link:' || true)
+            LINK=$(grep -i '^link:' headers.txt || true)
+            rm headers.txt
             if [[ ! "$LINK" =~ "rel=\"next\"" ]]; then
               break
             fi
             PAGE=$((PAGE + 1))
+            sleep 2  # Increased sleep for stability
           done
           
           TOTAL_COMMITS=0
@@ -53,24 +66,35 @@ jobs:
             # Count commits with pagination
             COMMITS=0
             PAGE=1
+            RETRY_COUNT=0
             while true; do
-              RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              curl -s -D headers.txt -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$TODAY_START&per_page=100&page=$PAGE")
-              PAGE_COMMITS=$(echo "$RESPONSE" | jq length)
+                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$TODAY_START_UTC&per_page=100&page=$PAGE" > response.json
+              if [[ $? -ne 0 ]]; then
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [[ $RETRY_COUNT -gt 3 ]]; then
+                  echo "Error: Failed to fetch commits for $REPO after 3 retries"
+                  exit 1
+                fi
+                echo "Retrying commit fetch for $REPO ($RETRY_COUNT/3)..."
+                sleep 5
+                continue
+              fi
+              PAGE_COMMITS=$(jq length response.json)
               COMMITS=$((COMMITS + PAGE_COMMITS))
-              LINK=$(curl -s -I -H "Authorization: Bearer $GITHUB_TOKEN" \
-                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$TODAY_START&per_page=100&page=$PAGE" | grep -i '^link:' || true)
+              LINK=$(grep -i '^link:' headers.txt || true)
+              rm headers.txt response.json
               if [[ ! "$LINK" =~ "rel=\"next\"" ]]; then
                 break
               fi
               PAGE=$((PAGE + 1))
-              sleep 1  # Avoid rate limits
+              sleep 2  # Increased sleep for stability
             done
             
             echo "Commits in $REPO: $COMMITS"
             TOTAL_COMMITS=$((TOTAL_COMMITS + COMMITS))
-            sleep 1  # Avoid rate limits between repositories
+            sleep 2  # Increased sleep for stability
           done
           
           echo "Total commits: $TOTAL_COMMITS"
