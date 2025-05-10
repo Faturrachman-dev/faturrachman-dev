@@ -1,4 +1,4 @@
-name: Update README with Today's and Monthly Commits
+name: Update README with Yesterday's and Monthly Commits
 on:
   schedule:
     - cron: "0 17 * * *"
@@ -20,6 +20,7 @@ jobs:
         run: sudo apt-get install -y jq
 
       - name: Get Yesterday's and Monthly Commits
+        id: get_commits
         env:
           COMMIT_COUNTER_TOKEN: ${{ secrets.COMMIT_COUNTER_TOKEN }}
         run: |
@@ -77,7 +78,7 @@ jobs:
             while true; do
               curl -s -D headers.txt -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$YESTERDAY_START_UTC&until=$TODAY_START_UTC&per_page=100&page=$PAGE" > response.json
+                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$YESTERDAY_START_UTC&until=$(date -u -d "today" +%Y-%m-%dT%H:%M:%SZ)&per_page=100&page=$PAGE" > response.json
               if [[ $? -ne 0 ]]; then
                 RETRY_COUNT=$((RETRY_COUNT + 1))
                 if [[ $RETRY_COUNT -gt 3 ]]; then
@@ -137,7 +138,7 @@ jobs:
           # Get previous monthly total from README
           PREV_MONTH_COMMITS=0
           if grep -q "<!-- MONTH_COMMITS:" faturrachman-dev/README.md; then
-            PREV_MONTH_COMMITS=$(grep "<!-- MONTH_COMMITS:" faturrachman-dev/README.md | sed 's/<!-- MONTH_COMMITS: \([0-9]\+\) -->/\1/')
+            PREV_MONTH_COMMITS=$(grep "<!-- MONTH_COMMITS:" faturrachman-dev/README.md | sed 's/<!-- MONTH_COMMITS: \([0-9]\+\) .* -->/\1/')
             PREV_MONTH=$(grep "<!-- MONTH_COMMITS:" faturrachman-dev/README.md | sed 's/<!-- MONTH_COMMITS: [0-9]\+ \(.*\) -->/\1/')
           fi
 
@@ -152,31 +153,36 @@ jobs:
           echo "Total this month's commits: $FINAL_MONTH_COMMITS"
           echo "TODAY_COMMITS=$TOTAL_YESTERDAY_COMMITS" >> $GITHUB_ENV
           echo "MONTH_COMMITS=$FINAL_MONTH_COMMITS" >> $GITHUB_ENV
+          echo "CURRENT_MONTH=$CURRENT_MONTH" >> $GITHUB_ENV
 
       - name: Update README
+        env:
+          TODAY_COMMITS: ${{ steps.get_commits.outputs.TODAY_COMMITS }}
+          MONTH_COMMITS: ${{ steps.get_commits.outputs.MONTH_COMMITS }}
+          CURRENT_MONTH: ${{ steps.get_commits.outputs.CURRENT_MONTH }}
         run: |
           # Update the placeholder in the comment line for yesterday's commits
           if grep -q "<!-- TODAY_COMMITS:" faturrachman-dev/README.md; then
-            sed -i "s/<!-- TODAY_COMMITS: [0-9]\+ -->/<!-- TODAY_COMMITS: ${{ env.TODAY_COMMITS }} -->/g" faturrachman-dev/README.md
+            sed -i "s/<!-- TODAY_COMMITS: [0-9]\+ -->/<!-- TODAY_COMMITS: $TODAY_COMMITS -->/g" faturrachman-dev/README.md
           else
-            echo "<!-- TODAY_COMMITS: ${{ env.TODAY_COMMITS }} -->" >> faturrachman-dev/README.md
-            echo "![Yesterday's Commits](https://img.shields.io/badge/Yesterday's%20Commits-${{ env.TODAY_COMMITS }}-blue)" >> faturrachman-dev/README.md
+            echo "<!-- TODAY_COMMITS: $TODAY_COMMITS -->" >> faturrachman-dev/README.md
+            echo "![Yesterday's Commits](https://img.shields.io/badge/Yesterday's%20Commits-$TODAY_COMMITS-blue)" >> faturrachman-dev/README.md
           fi
           # Update the badge line for yesterday's commits
           if grep -q "Yesterday's%20Commits-[0-9]\+-blue" faturrachman-dev/README.md; then
-            sed -i "s/\(Yesterday's%20Commits-\)[0-9]\+\(-blue\)/\1${{ env.TODAY_COMMITS }}\2/" faturrachman-dev/README.md
+            sed -i "s/\(Yesterday's%20Commits-\)[0-9]\+\(-blue\)/\1$TODAY_COMMITS\2/" faturrachman-dev/README.md
           fi
 
           # Update the placeholder in the comment line for monthly commits
           if grep -q "<!-- MONTH_COMMITS:" faturrachman-dev/README.md; then
-            sed -i "s/<!-- MONTH_COMMITS: [0-9]\+ .* -->/<!-- MONTH_COMMITS: ${{ env.MONTH_COMMITS }} $CURRENT_MONTH -->/g" faturrachman-dev/README.md
+            sed -i "s/<!-- MONTH_COMMITS: [0-9]\+ .* -->/<!-- MONTH_COMMITS: $MONTH_COMMITS $CURRENT_MONTH -->/g" faturrachman-dev/README.md
           else
-            echo "<!-- MONTH_COMMITS: ${{ env.MONTH_COMMITS }} $CURRENT_MONTH -->" >> faturrachman-dev/README.md
-            echo "![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-${{ env.MONTH_COMMITS }}-green)" >> faturrachman-dev/README.md
+            echo "<!-- MONTH_COMMITS: $MONTH_COMMITS $CURRENT_MONTH -->" >> faturrachman-dev/README.md
+            echo "![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-$MONTH_COMMITS-green)" >> faturrachman-dev/README.md
           fi
           # Update the badge line for monthly commits
           if grep -q "This%20Month's%20Commits-[0-9]\+-green" faturrachman-dev/README.md; then
-            sed -i "s/\(This%20Month's%20Commits-\)[0-9]\+\(-green\)/\1${{ env.MONTH_COMMITS }}\2/" faturrachman-dev/README.md
+            sed -i "s/\(This%20Month's%20Commits-\)[0-9]\+\(-green\)/\1$MONTH_COMMITS\2/" faturrachman-dev/README.md
           fi
 
       - name: Commit and Push Changes
