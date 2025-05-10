@@ -4,7 +4,7 @@
 
   # Hi, 👋 I’m Faturrachman
 
-  ## 💻 Data and Automation Engineer | Machine Learning Engineer Cohort at Coding-Camp DBS Foundation | CompTIA Certified IT | AI Agent Developer
+  ## 💻 Data and Automation Engineer | Machine Learning Engineer Cohort at Coding-Camp DBS Foundation | CompTIA IT Certified | AI Agents Developer
 
   ### 👩‍💻 Python, Golang, Langchain, AI-SDK, Hadoop, Apache Spark
 
