@@ -8,9 +8,8 @@
 
   ### 👩‍💻 Python, Golang, Langchain, AI-SDK, Hadoop, Apache Spark
 
+  <!-- TODAY_COMMITS: 0 -->
   ![Today's Commits](https://img.shields.io/badge/Today's%20Commits-0-blue)
-
-  Today's Commits: 0
 
   I'm happy to connect & discuss!
 </div>
