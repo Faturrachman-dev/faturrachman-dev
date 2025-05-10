@@ -1,0 +1,24 @@
+name: Update README with Today's Commits
+on:
+  schedule:
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get Today's Commits
+        run: |
+          TODAY_COMMITS=$(git rev-list --count --author="Faturrachman-dev" --since="1.day" origin/main || echo "0")
+          echo "TODAY_COMMITS=$TODAY_COMMITS" >> $GITHUB_ENV
+      - name: Update README
+        run: |
+          if grep -q "<!-- TODAY_COMMITS -->" README.md; then
+            sed -i "s/<!-- TODAY_COMMITS -->/${{ env.TODAY_COMMITS }}/g" README.md
+          else
+            echo "Today's Commits: ${{ env.TODAY_COMMITS }}" >> README.md
+          fi
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Update today's commits"
