@@ -19,7 +19,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
-      - name: Get Yesterday's and Monthly Commits
+      - name: Count Commits
         env:
           COMMIT_COUNTER_TOKEN: ${{ secrets.COMMIT_COUNTER_TOKEN }}
         run: |
@@ -42,14 +42,19 @@ jobs:
             RESPONSE=$(curl -s -D headers.txt -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/users/Faturrachman-dev/repos?per_page=100&page=$PAGE")
-            if [[ $? -ne 0 ]]; then
+            REMAINING=$(grep -i '^X-Rate-Limit-Remaining:' headers.txt | awk '{print $2}' || echo 5000)
+            if [ "$REMAINING" -lt 100 ]; then
+              echo "Warning: Rate limit nearing (remaining: $REMAINING), waiting 60s..."
+              sleep 60
+            fi
+            if [ $? -ne 0 ]; then
               RETRY_COUNT=$((RETRY_COUNT + 1))
-              if [[ $RETRY_COUNT -gt 3 ]]; then
-                echo "Error: Failed to fetch repositories after 3 retries"
-                exit 1
+              if [ $RETRY_COUNT -gt 3 ]; then
+                echo "Error: Failed to fetch repositories after 3 retries, skipping..."
+                break
               fi
               echo "Retrying repository list fetch ($RETRY_COUNT/3)..."
-              sleep 5
+              sleep $((2 ** RETRY_COUNT))
               continue
             fi
             NEW_REPOS=$(echo "$RESPONSE" | jq -r '.[].name' | tr '\n' ' ')
@@ -60,7 +65,7 @@ jobs:
               break
             fi
             PAGE=$((PAGE + 1))
-            sleep 2  # Increased sleep for stability
+            sleep 2
           done
           
           TOTAL_YESTERDAY_COMMITS=0
@@ -75,28 +80,23 @@ jobs:
             PAGE=1
             RETRY_COUNT=0
             while true; do
-              curl -s -D headers.txt -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$YESTERDAY_START_UTC&until=$(date -u -d "today" +%Y-%m-%dT%H:%M:%SZ)&per_page=100&page=$PAGE" > response.json
-              if [[ $? -ne 0 ]]; then
+              if ! curl -s -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$YESTERDAY_START_UTC&until=$(date -u -d "today" +%Y-%m-%dT%H:%M:%SZ)&per_page=100&page=$PAGE" | jq -s length > /dev/null; then
                 RETRY_COUNT=$((RETRY_COUNT + 1))
-                if [[ $RETRY_COUNT -gt 3 ]]; then
-                  echo "Error: Failed to fetch yesterday's commits for $REPO after 3 retries"
-                  exit 1
+                if [ $RETRY_COUNT -gt 3 ]; then
+                  echo "Error: Failed to fetch yesterday's commits for $REPO after 3 retries, skipping..."
+                  continue 2
                 fi
                 echo "Retrying yesterday's commit fetch for $REPO ($RETRY_COUNT/3)..."
-                sleep 5
+                sleep $((2 ** RETRY_COUNT))
                 continue
               fi
-              PAGE_COMMITS=$(jq length response.json)
+              PAGE_COMMITS=$(curl -s -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$YESTERDAY_START_UTC&until=$(date -u -d "today" +%Y-%m-%dT%H:%M:%SZ)&per_page=100&page=$PAGE" | jq length)
               COMMITS=$((COMMITS + PAGE_COMMITS))
-              LINK=$(grep -i '^link:' headers.txt || true)
-              rm headers.txt response.json
+              LINK=$(curl -s -I -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$YESTERDAY_START_UTC&until=$(date -u -d "today" +%Y-%m-%dT%H:%M:%SZ)&per_page=100&page=$PAGE" | grep -i '^link:' || true)
               if [[ ! "$LINK" =~ "rel=\"next\"" ]]; then
                 break
               fi
               PAGE=$((PAGE + 1))
-              sleep 2  # Increased sleep for stability
             done
             echo "Yesterday's commits in $REPO: $COMMITS"
             TOTAL_YESTERDAY_COMMITS=$((TOTAL_YESTERDAY_COMMITS + COMMITS))
@@ -106,32 +106,26 @@ jobs:
             PAGE=1
             RETRY_COUNT=0
             while true; do
-              curl -s -D headers.txt -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$MONTH_START_UTC&per_page=100&page=$PAGE" > response.json
-              if [[ $? -ne 0 ]]; then
+              if ! curl -s -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$MONTH_START_UTC&per_page=100&page=$PAGE" | jq -s length > /dev/null; then
                 RETRY_COUNT=$((RETRY_COUNT + 1))
-                if [[ $RETRY_COUNT -gt 3 ]]; then
-                  echo "Error: Failed to fetch this month's commits for $REPO after 3 retries"
-                  exit 1
+                if [ $RETRY_COUNT -gt 3 ]; then
+                  echo "Error: Failed to fetch this month's commits for $REPO after 3 retries, skipping..."
+                  continue 2
                 fi
                 echo "Retrying this month's commit fetch for $REPO ($RETRY_COUNT/3)..."
-                sleep 5
+                sleep $((2 ** RETRY_COUNT))
                 continue
               fi
-              PAGE_COMMITS=$(jq length response.json)
+              PAGE_COMMITS=$(curl -s -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$MONTH_START_UTC&per_page=100&page=$PAGE" | jq length)
               COMMITS=$((COMMITS + PAGE_COMMITS))
-              LINK=$(grep -i '^link:' headers.txt || true)
-              rm headers.txt response.json
+              LINK=$(curl -s -I -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$MONTH_START_UTC&per_page=100&page=$PAGE" | grep -i '^link:' || true)
               if [[ ! "$LINK" =~ "rel=\"next\"" ]]; then
                 break
               fi
               PAGE=$((PAGE + 1))
-              sleep 2  # Increased sleep for stability
             done
             echo "This month's commits in $REPO: $COMMITS"
             TOTAL_MONTH_COMMITS=$((TOTAL_MONTH_COMMITS + COMMITS))
-            sleep 2  # Increased sleep for stability
           done
           
           # Get previous monthly total from README
