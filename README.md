@@ -14,3 +14,4 @@
 
   I'm happy to connect & discuss!
 </div>
+![Today's Commits](https://img.shields.io/badge/Today's%20Commits-0-blue)
