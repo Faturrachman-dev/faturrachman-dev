@@ -1,4 +1,4 @@
-name: Update README with Today's Commits
+name: Update README with Today's and Monthly Commits
 on:
   schedule:
     - cron: "0 17 * * *"
@@ -19,14 +19,20 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
-      - name: Get Today's Commits Across All Repositories
+      - name: Get Yesterday's and Monthly Commits
         env:
           COMMIT_COUNTER_TOKEN: ${{ secrets.COMMIT_COUNTER_TOKEN }}
         run: |
-          # Calculate the start of the current day in WIB (UTC+7)
-          TODAY_START=$(TZ=Asia/Jakarta date +%Y-%m-%d)
-          TODAY_START_UTC=$(date -u -d "$TODAY_START 00:00:00 -7 hours" +%Y-%m-%dT%H:%M:%SZ)
-          echo "Counting commits since: $TODAY_START_UTC (00:00 WIB)"
+          # Calculate the start of yesterday in WIB (UTC+7)
+          YESTERDAY_START=$(TZ=Asia/Jakarta date -d "yesterday" +%Y-%m-%d)
+          YESTERDAY_START_UTC=$(date -u -d "$YESTERDAY_START 00:00:00 -7 hours" +%Y-%m-%dT%H:%M:%SZ)
+          echo "Counting yesterday's commits since: $YESTERDAY_START_UTC (00:00 WIB yesterday)"
+
+          # Calculate the start of the current month in WIB
+          MONTH_START=$(TZ=Asia/Jakarta date +%Y-%m-01)
+          MONTH_START_UTC=$(date -u -d "$MONTH_START 00:00:00 -7 hours" +%Y-%m-%dT%H:%M:%SZ)
+          CURRENT_MONTH=$(TZ=Asia/Jakarta date +%Y-%m)
+          echo "Counting this month's commits since: $MONTH_START_UTC (start of $CURRENT_MONTH)"
 
           # Get the list of repositories for the user with pagination
           PAGE=1
@@ -57,27 +63,28 @@ jobs:
             sleep 2  # Increased sleep for stability
           done
           
-          TOTAL_COMMITS=0
+          TOTAL_YESTERDAY_COMMITS=0
+          TOTAL_MONTH_COMMITS=0
           
           # Loop through each repository and count commits
           for REPO in $REPOS; do
             echo "Processing repository: $REPO"
             
-            # Count commits with pagination
+            # Count yesterday's commits
             COMMITS=0
             PAGE=1
             RETRY_COUNT=0
             while true; do
               curl -s -D headers.txt -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$TODAY_START_UTC&per_page=100&page=$PAGE" > response.json
+                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$YESTERDAY_START_UTC&until=$TODAY_START_UTC&per_page=100&page=$PAGE" > response.json
               if [[ $? -ne 0 ]]; then
                 RETRY_COUNT=$((RETRY_COUNT + 1))
                 if [[ $RETRY_COUNT -gt 3 ]]; then
-                  echo "Error: Failed to fetch commits for $REPO after 3 retries"
+                  echo "Error: Failed to fetch yesterday's commits for $REPO after 3 retries"
                   exit 1
                 fi
-                echo "Retrying commit fetch for $REPO ($RETRY_COUNT/3)..."
+                echo "Retrying yesterday's commit fetch for $REPO ($RETRY_COUNT/3)..."
                 sleep 5
                 continue
               fi
@@ -91,31 +98,89 @@ jobs:
               PAGE=$((PAGE + 1))
               sleep 2  # Increased sleep for stability
             done
-            
-            echo "Commits in $REPO: $COMMITS"
-            TOTAL_COMMITS=$((TOTAL_COMMITS + COMMITS))
+            echo "Yesterday's commits in $REPO: $COMMITS"
+            TOTAL_YESTERDAY_COMMITS=$((TOTAL_YESTERDAY_COMMITS + COMMITS))
+
+            # Count this month's commits
+            COMMITS=0
+            PAGE=1
+            RETRY_COUNT=0
+            while true; do
+              curl -s -D headers.txt -H "Authorization: Bearer $COMMIT_COUNTER_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$MONTH_START_UTC&per_page=100&page=$PAGE" > response.json
+              if [[ $? -ne 0 ]]; then
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [[ $RETRY_COUNT -gt 3 ]]; then
+                  echo "Error: Failed to fetch this month's commits for $REPO after 3 retries"
+                  exit 1
+                fi
+                echo "Retrying this month's commit fetch for $REPO ($RETRY_COUNT/3)..."
+                sleep 5
+                continue
+              fi
+              PAGE_COMMITS=$(jq length response.json)
+              COMMITS=$((COMMITS + PAGE_COMMITS))
+              LINK=$(grep -i '^link:' headers.txt || true)
+              rm headers.txt response.json
+              if [[ ! "$LINK" =~ "rel=\"next\"" ]]; then
+                break
+              fi
+              PAGE=$((PAGE + 1))
+              sleep 2  # Increased sleep for stability
+            done
+            echo "This month's commits in $REPO: $COMMITS"
+            TOTAL_MONTH_COMMITS=$((TOTAL_MONTH_COMMITS + COMMITS))
             sleep 2  # Increased sleep for stability
           done
           
-          echo "Total commits: $TOTAL_COMMITS"
-          echo "TODAY_COMMITS=$TOTAL_COMMITS" >> $GITHUB_ENV
+          # Get previous monthly total from README
+          PREV_MONTH_COMMITS=0
+          if grep -q "<!-- MONTH_COMMITS:" faturrachman-dev/README.md; then
+            PREV_MONTH_COMMITS=$(grep "<!-- MONTH_COMMITS:" faturrachman-dev/README.md | sed 's/<!-- MONTH_COMMITS: \([0-9]\+\) -->/\1/')
+            PREV_MONTH=$(grep "<!-- MONTH_COMMITS:" faturrachman-dev/README.md | sed 's/<!-- MONTH_COMMITS: [0-9]\+ \(.*\) -->/\1/')
+          fi
+
+          # Reset or accumulate monthly commits
+          if [[ "$PREV_MONTH" != "$CURRENT_MONTH" ]]; then
+            FINAL_MONTH_COMMITS=$TOTAL_MONTH_COMMITS
+          else
+            FINAL_MONTH_COMMITS=$((PREV_MONTH_COMMITS + TOTAL_YESTERDAY_COMMITS))
+          fi
+
+          echo "Total yesterday's commits: $TOTAL_YESTERDAY_COMMITS"
+          echo "Total this month's commits: $FINAL_MONTH_COMMITS"
+          echo "TODAY_COMMITS=$TOTAL_YESTERDAY_COMMITS" >> $GITHUB_ENV
+          echo "MONTH_COMMITS=$FINAL_MONTH_COMMITS" >> $GITHUB_ENV
 
       - name: Update README
         run: |
-          # Update the placeholder in the comment line
+          # Update the placeholder in the comment line for yesterday's commits
           if grep -q "<!-- TODAY_COMMITS:" faturrachman-dev/README.md; then
             sed -i "s/<!-- TODAY_COMMITS: [0-9]\+ -->/<!-- TODAY_COMMITS: ${{ env.TODAY_COMMITS }} -->/g" faturrachman-dev/README.md
           else
             echo "<!-- TODAY_COMMITS: ${{ env.TODAY_COMMITS }} -->" >> faturrachman-dev/README.md
-            echo "![Today's Commits](https://img.shields.io/badge/Today's%20Commits-${{ env.TODAY_COMMITS }}-blue)" >> faturrachman-dev/README.md
+            echo "![Yesterday's Commits](https://img.shields.io/badge/Yesterday's%20Commits-${{ env.TODAY_COMMITS }}-blue)" >> faturrachman-dev/README.md
           fi
-          # Update the badge line with the new commit count
-          if grep -q "Today's%20Commits-[0-9]\+-blue" faturrachman-dev/README.md; then
-            sed -i "s/\(Today's%20Commits-\)[0-9]\+\(-blue\)/\1${{ env.TODAY_COMMITS }}\2/" faturrachman-dev/README.md
+          # Update the badge line for yesterday's commits
+          if grep -q "Yesterday's%20Commits-[0-9]\+-blue" faturrachman-dev/README.md; then
+            sed -i "s/\(Yesterday's%20Commits-\)[0-9]\+\(-blue\)/\1${{ env.TODAY_COMMITS }}\2/" faturrachman-dev/README.md
+          fi
+
+          # Update the placeholder in the comment line for monthly commits
+          if grep -q "<!-- MONTH_COMMITS:" faturrachman-dev/README.md; then
+            sed -i "s/<!-- MONTH_COMMITS: [0-9]\+ .* -->/<!-- MONTH_COMMITS: ${{ env.MONTH_COMMITS }} $CURRENT_MONTH -->/g" faturrachman-dev/README.md
+          else
+            echo "<!-- MONTH_COMMITS: ${{ env.MONTH_COMMITS }} $CURRENT_MONTH -->" >> faturrachman-dev/README.md
+            echo "![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-${{ env.MONTH_COMMITS }}-green)" >> faturrachman-dev/README.md
+          fi
+          # Update the badge line for monthly commits
+          if grep -q "This%20Month's%20Commits-[0-9]\+-green" faturrachman-dev/README.md; then
+            sed -i "s/\(This%20Month's%20Commits-\)[0-9]\+\(-green\)/\1${{ env.MONTH_COMMITS }}\2/" faturrachman-dev/README.md
           fi
 
       - name: Commit and Push Changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: "Update today's commits"
+          commit_message: "Update yesterday's and monthly commits"
           repository: faturrachman-dev
