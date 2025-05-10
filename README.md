@@ -7,4 +7,6 @@
   ### 👩‍💻 Python, Golang, Langchain, AI-SDK, Hadoop, Apache Spark
 </div>
 
+![Today's Commits](https://img.shields.io/badge/Today's_Commits-<!-- TODAY_COMMITS -->-blue)
+
 I'm happy to connect & discuss! 
