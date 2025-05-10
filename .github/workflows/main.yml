@@ -4,23 +4,94 @@ on:
     - cron: "0 17 * * *"
   workflow_dispatch:
 permissions:
-  contents: write  # Grants permission to write to repository contents
+  contents: write
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Get Today's Commits
+      - name: Checkout profile repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: Faturrachman-dev/faturrachman-dev
+          path: faturrachman-dev
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Get Today's Commits Across All Repositories
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TODAY_COMMITS=$(git rev-list --count --author="faturrachman.63@smk.belajar.id" --since="1.day" origin/main || echo "0")
-          echo "TODAY_COMMITS=$TODAY_COMMITS" >> $GITHUB_ENV
+          # Calculate the start of the current day in UTC
+          TODAY_START=$(date -u +%Y-%m-%dT00:00:00Z)
+          echo "Counting commits since: $TODAY_START"
+
+          # Get the list of repositories for the user with pagination
+          PAGE=1
+          REPOS=""
+          while true; do
+            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/users/Faturrachman-dev/repos?per_page=100&page=$PAGE")
+            NEW_REPOS=$(echo "$RESPONSE" | jq -r '.[].name' | tr '\n' ' ')
+            REPOS="$REPOS $NEW_REPOS"
+            LINK=$(curl -s -I -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/users/Faturrachman-dev/repos?per_page=100&page=$PAGE" | grep -i '^link:' || true)
+            if [[ ! "$LINK" =~ "rel=\"next\"" ]]; then
+              break
+            fi
+            PAGE=$((PAGE + 1))
+          done
+          
+          TOTAL_COMMITS=0
+          
+          # Loop through each repository and count commits
+          for REPO in $REPOS; do
+            echo "Processing repository: $REPO"
+            
+            # Count commits with pagination
+            COMMITS=0
+            PAGE=1
+            while true; do
+              RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$TODAY_START&per_page=100&page=$PAGE")
+              PAGE_COMMITS=$(echo "$RESPONSE" | jq length)
+              COMMITS=$((COMMITS + PAGE_COMMITS))
+              LINK=$(curl -s -I -H "Authorization: Bearer $GITHUB_TOKEN" \
+                "https://api.github.com/repos/Faturrachman-dev/$REPO/commits?author=faturrachman.63@smk.belajar.id&since=$TODAY_START&per_page=100&page=$PAGE" | grep -i '^link:' || true)
+              if [[ ! "$LINK" =~ "rel=\"next\"" ]]; then
+                break
+              fi
+              PAGE=$((PAGE + 1))
+              sleep 1  # Avoid rate limits
+            done
+            
+            echo "Commits in $REPO: $COMMITS"
+            TOTAL_COMMITS=$((TOTAL_COMMITS + COMMITS))
+            sleep 1  # Avoid rate limits between repositories
+          done
+          
+          echo "Total commits: $TOTAL_COMMITS"
+          echo "TODAY_COMMITS=$TOTAL_COMMITS" >> $GITHUB_ENV
+
       - name: Update README
         run: |
-          if grep -q "<!-- TODAY_COMMITS -->" README.md; then
-            sed -i "s/<!-- TODAY_COMMITS -->/${{ env.TODAY_COMMITS }}/g" README.md
+          # Update the placeholder in the comment line
+          if grep -q "<!-- TODAY_COMMITS:" faturrachman-dev/README.md; then
+            sed -i "s/<!-- TODAY_COMMITS: [0-9]\+ -->/<!-- TODAY_COMMITS: ${{ env.TODAY_COMMITS }} -->/g" faturrachman-dev/README.md
           else
-            echo "![Today's Commits](https://img.shields.io/badge/Today's%20Commits-${{ env.TODAY_COMMITS }}-blue)" >> README.md
+            echo "<!-- TODAY_COMMITS: ${{ env.TODAY_COMMITS }} -->" >> faturrachman-dev/README.md
+            echo "![Today's Commits](https://img.shields.io/badge/Today's%20Commits-${{ env.TODAY_COMMITS }}-blue)" >> faturrachman-dev/README.md
           fi
-      - uses: stefanzweifel/git-auto-commit-action@v4
+          # Update the badge line with the new commit count
+          if grep -q "Today's%20Commits-[0-9]\+-blue" faturrachman-dev/README.md; then
+            sed -i "s/\(Today's%20Commits-\)[0-9]\+\(-blue\)/\1${{ env.TODAY_COMMITS }}\2/" faturrachman-dev/README.md
+          fi
+
+      - name: Commit and Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "Update today's commits"
+          repository: faturrachman-dev
