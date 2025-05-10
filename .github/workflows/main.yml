@@ -20,7 +20,6 @@ jobs:
         run: sudo apt-get install -y jq
 
       - name: Get Yesterday's and Monthly Commits
-        id: get_commits
         env:
           COMMIT_COUNTER_TOKEN: ${{ secrets.COMMIT_COUNTER_TOKEN }}
         run: |
@@ -156,10 +155,6 @@ jobs:
           echo "CURRENT_MONTH=$CURRENT_MONTH" >> $GITHUB_ENV
 
       - name: Update README
-        env:
-          TODAY_COMMITS: ${{ steps.get_commits.outputs.TODAY_COMMITS }}
-          MONTH_COMMITS: ${{ steps.get_commits.outputs.MONTH_COMMITS }}
-          CURRENT_MONTH: ${{ steps.get_commits.outputs.CURRENT_MONTH }}
         run: |
           # Update the placeholder in the comment line for yesterday's commits
           if grep -q "<!-- TODAY_COMMITS:" faturrachman-dev/README.md; then
