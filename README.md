@@ -15,7 +15,7 @@
 
   I'm happy to connect & discuss!
 </div>
-<!-- TODAY_CONTRIBUTIONS: 0 -->
-![Yesterday's Contributions](https://img.shields.io/badge/Yesterday's%20Contributions-0-purple)
+<!-- TODAY_CONTRIBUTIONS: Fetching -->
+![Yesterday's Contributions](https://img.shields.io/badge/Yesterday's%20Contributions-Fetching-purple)
 <!-- MONTH_CONTRIBUTIONS:  2025-05 -->
 ![This Month's Contributions](https://img.shields.io/badge/This%20Month's%20Contributions--orange)
