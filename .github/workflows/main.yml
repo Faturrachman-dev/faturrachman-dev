@@ -88,58 +88,55 @@ jobs:
             
             # Count events by type within the date range
             if [ -f "$events_file" ]; then
-              # Create JSON with event counts
-              local counts=$(jq -n \
-                --arg since "$since_date" \
-                --arg until "$until_date" \
-                --slurpfile events "$events_file" \
-                '{
-                  "PushEvent": 0,
-                  "CreateEvent": 0,
-                  "IssuesEvent": 0,
-                  "IssueCommentEvent": 0,
-                  "PullRequestEvent": 0,
-                  "PullRequestReviewEvent": 0,
-                  "PullRequestReviewCommentEvent": 0,
-                  "CommitCommentEvent": 0,
-                  "ForkEvent": 0,
-                  "WatchEvent": 0,
-                  "ReleaseEvent": 0,
-                  "PublicEvent": 0,
-                  "total_commits": 0
-                }
-                | reduce $events[] as $event (
-                    .;
-                    if ($event.created_at >= $since and $event.created_at <= $until)
-                    then
-                      if $event.type == "PushEvent" then
-                        .PushEvent += 1 |
-                        if $event.payload.size then .total_commits += $event.payload.size else . end
-                      elif $event.type as $t | contains($t) then
-                        .[$event.type] += 1
-                      else . end
-                    else . end
-                  )')
+              # Initialize counters
+              local push_events=0
+              local total_commits=0
+              local create_events=0
+              local issues_events=0
+              local issue_comments=0
+              local pr_events=0
+              local pr_reviews=0
+              local pr_review_comments=0
+              local commit_comments=0
+              local fork_events=0
+              local watch_events=0
+              local release_events=0
+              local public_events=0
               
-              # Extract event counts and calculate total
-              local push_events=$(echo "$counts" | jq '.PushEvent')
-              local total_commits=$(echo "$counts" | jq '.total_commits')
-              local create_events=$(echo "$counts" | jq '.CreateEvent')
-              local issues_events=$(echo "$counts" | jq '.IssuesEvent')
-              local issue_comments=$(echo "$counts" | jq '.IssueCommentEvent')
-              local pr_events=$(echo "$counts" | jq '.PullRequestEvent')
-              local pr_reviews=$(echo "$counts" | jq '.PullRequestReviewEvent')
-              local pr_review_comments=$(echo "$counts" | jq '.PullRequestReviewCommentEvent')
-              local commit_comments=$(echo "$counts" | jq '.CommitCommentEvent')
-              local fork_events=$(echo "$counts" | jq '.ForkEvent')
-              local watch_events=$(echo "$counts" | jq '.WatchEvent')
-              local release_events=$(echo "$counts" | jq '.ReleaseEvent')
-              local public_events=$(echo "$counts" | jq '.PublicEvent')
+              # Process events manually instead of using complex jq query
+              while read -r event_line; do
+                event_type=$(echo "$event_line" | jq -r '.type')
+                event_date=$(echo "$event_line" | jq -r '.created_at')
+                
+                # Check if event is within date range
+                if [[ "$event_date" > "$since_date" && "$event_date" < "$until_date" ]]; then
+                  case "$event_type" in
+                    "PushEvent")
+                      push_events=$((push_events + 1))
+                      # Count commits in this push
+                      commit_count=$(echo "$event_line" | jq -r '.payload.size // 0')
+                      total_commits=$((total_commits + commit_count))
+                      ;;
+                    "CreateEvent") create_events=$((create_events + 1)) ;;
+                    "IssuesEvent") issues_events=$((issues_events + 1)) ;;
+                    "IssueCommentEvent") issue_comments=$((issue_comments + 1)) ;;
+                    "PullRequestEvent") pr_events=$((pr_events + 1)) ;;
+                    "PullRequestReviewEvent") pr_reviews=$((pr_reviews + 1)) ;;
+                    "PullRequestReviewCommentEvent") pr_review_comments=$((pr_review_comments + 1)) ;;
+                    "CommitCommentEvent") commit_comments=$((commit_comments + 1)) ;;
+                    "ForkEvent") fork_events=$((fork_events + 1)) ;;
+                    "WatchEvent") watch_events=$((watch_events + 1)) ;;
+                    "ReleaseEvent") release_events=$((release_events + 1)) ;;
+                    "PublicEvent") public_events=$((public_events + 1)) ;;
+                  esac
+                fi
+              done < <(jq -c '.[]' "$events_file" 2>/dev/null || echo '{}')
               
-              # Calculate total contributions (each event counts as 1 except for commits)
+              # Calculate total contributions
               local other_contributions=$((create_events + issues_events + issue_comments + pr_events + pr_reviews + pr_review_comments + commit_comments + fork_events + watch_events + release_events + public_events))
               local total_contributions=$((total_commits + other_contributions))
               
+              # Set environment variables
               echo "$day_key=$total_contributions" >> $GITHUB_ENV
               echo "COMMITS_$day_key=$total_commits" >> $GITHUB_ENV
               echo "OTHER_$day_key=$other_contributions" >> $GITHUB_ENV
@@ -201,6 +198,27 @@ jobs:
           MONTH_END_UTC=$(date -u -d "$(date +%Y-%m-01) +1 month -1 day 23:59:59 +7 hours" +%Y-%m-%dT%H:%M:%SZ)
           count_events_by_type "$MONTH_START_UTC" "$MONTH_END_UTC" "month_events.json" "MONTH_ALL"
           
+          # Make sure we have values in the environment variables
+          if [ -z "${MONTH_ALL}" ]; then
+            MONTH_ALL=0
+            echo "MONTH_ALL=0" >> $GITHUB_ENV
+          fi
+          
+          if [ -z "${COMMITS_MONTH_ALL}" ]; then
+            COMMITS_MONTH_ALL=0
+            echo "COMMITS_MONTH_ALL=0" >> $GITHUB_ENV 
+          fi
+          
+          if [ -z "${TODAY_CONTRIBUTIONS}" ]; then
+            TODAY_CONTRIBUTIONS=0
+            echo "TODAY_CONTRIBUTIONS=0" >> $GITHUB_ENV
+          fi
+          
+          if [ -z "${COMMITS_TODAY_CONTRIBUTIONS}" ]; then
+            COMMITS_TODAY_CONTRIBUTIONS=0
+            echo "COMMITS_TODAY_CONTRIBUTIONS=0" >> $GITHUB_ENV
+          fi
+          
           # Set environment variables for downstream steps
           if [[ "$PREV_MONTH" != "$CURRENT_MONTH" || "$PREV_MONTH_CONTR" != "$CURRENT_MONTH" ]]; then
             echo "New month detected or first run, using fresh counts"
@@ -213,16 +231,26 @@ jobs:
             MONTH_COMMITS=$((PREV_MONTH_COMMITS + COMMITS_TODAY_CONTRIBUTIONS))
           fi
           
+          # Make sure MONTH_CONTRIBUTIONS has a value (defaults to 0)
+          if [ -z "${MONTH_CONTRIBUTIONS}" ]; then
+            MONTH_CONTRIBUTIONS=0
+          fi
+          
+          # Make sure MONTH_COMMITS has a value (defaults to 0)
+          if [ -z "${MONTH_COMMITS}" ]; then
+            MONTH_COMMITS=0
+          fi
+          
           echo "MONTH_CONTRIBUTIONS=$MONTH_CONTRIBUTIONS" >> $GITHUB_ENV
           echo "MONTH_COMMITS=$MONTH_COMMITS" >> $GITHUB_ENV
           echo "CURRENT_MONTH=$CURRENT_MONTH" >> $GITHUB_ENV
           
           echo "Summary:"
-          echo "  Yesterday's commits: ${COMMITS_TODAY_CONTRIBUTIONS}"
-          echo "  Yesterday's other contributions: ${OTHER_TODAY_CONTRIBUTIONS}"
-          echo "  Yesterday's total contributions: ${TODAY_CONTRIBUTIONS}"
-          echo "  This month's commits: ${MONTH_COMMITS}"
-          echo "  This month's total contributions: ${MONTH_CONTRIBUTIONS}"
+          echo "  Yesterday's commits: ${COMMITS_TODAY_CONTRIBUTIONS:-0}"
+          echo "  Yesterday's other contributions: ${OTHER_TODAY_CONTRIBUTIONS:-0}"
+          echo "  Yesterday's total contributions: ${TODAY_CONTRIBUTIONS:-0}"
+          echo "  This month's commits: ${MONTH_COMMITS:-0}"
+          echo "  This month's total contributions: ${MONTH_CONTRIBUTIONS:-0}"
 
       - name: Update README
         run: |
