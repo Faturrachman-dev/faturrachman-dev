@@ -259,9 +259,12 @@ jobs:
             echo "<!-- TODAY_COMMITS: $TODAY_COMMITS -->" >> faturrachman-dev/README.md
             echo "![Today's Commits](https://img.shields.io/badge/Today's%20Commits-$TODAY_COMMITS-blue)" >> faturrachman-dev/README.md
           fi
-          # Update the badge line for today's commits
+          
+          # Update the badge line for today's commits - check for both Today's and Yesterday's format
           if grep -q "Yesterday's%20Commits-.*-blue" faturrachman-dev/README.md; then
             sed -i "s/Yesterday's%20Commits-.*-blue/Today's%20Commits-$TODAY_COMMITS-blue/g" faturrachman-dev/README.md
+          elif grep -q "Today's%20Commits-.*-blue" faturrachman-dev/README.md; then
+            sed -i "s/Today's%20Commits-.*-blue/Today's%20Commits-$TODAY_COMMITS-blue/g" faturrachman-dev/README.md
           fi
           
           # Add today's total contributions
@@ -271,9 +274,12 @@ jobs:
             echo "<!-- TODAY_CONTRIBUTIONS: $TODAY_CONTRIBUTIONS -->" >> faturrachman-dev/README.md
             echo "![Today's Contributions](https://img.shields.io/badge/Today's%20Contributions-$TODAY_CONTRIBUTIONS-purple)" >> faturrachman-dev/README.md
           fi
-          # Update the badge line for today's contributions
+          
+          # Update the badge line for today's contributions - check for both Today's and Yesterday's format
           if grep -q "Yesterday's%20Contributions-.*-purple" faturrachman-dev/README.md; then
             sed -i "s/Yesterday's%20Contributions-.*-purple/Today's%20Contributions-$TODAY_CONTRIBUTIONS-purple/g" faturrachman-dev/README.md
+          elif grep -q "Today's%20Contributions-.*-purple" faturrachman-dev/README.md; then
+            sed -i "s/Today's%20Contributions-.*-purple/Today's%20Contributions-$TODAY_CONTRIBUTIONS-purple/g" faturrachman-dev/README.md
           fi
 
           # Update the placeholder in the comment line for monthly commits
@@ -283,6 +289,7 @@ jobs:
             echo "<!-- MONTH_COMMITS: $MONTH_COMMITS $CURRENT_MONTH -->" >> faturrachman-dev/README.md
             echo "![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-$MONTH_COMMITS-green)" >> faturrachman-dev/README.md
           fi
+          
           # Update the badge line for monthly commits
           if grep -q "This%20Month's%20Commits-.*-green" faturrachman-dev/README.md; then
             sed -i "s/This%20Month's%20Commits-.*-green/This%20Month's%20Commits-$MONTH_COMMITS-green/g" faturrachman-dev/README.md
@@ -295,6 +302,7 @@ jobs:
             echo "<!-- MONTH_CONTRIBUTIONS: $MONTH_CONTRIBUTIONS $CURRENT_MONTH -->" >> faturrachman-dev/README.md
             echo "![This Month's Contributions](https://img.shields.io/badge/This%20Month's%20Contributions-$MONTH_CONTRIBUTIONS-orange)" >> faturrachman-dev/README.md
           fi
+          
           # Update the badge line for monthly contributions
           if grep -q "This%20Month's%20Contributions-.*-orange" faturrachman-dev/README.md; then
             sed -i "s/This%20Month's%20Contributions-.*-orange/This%20Month's%20Contributions-$MONTH_CONTRIBUTIONS-orange/g" faturrachman-dev/README.md
