@@ -38,7 +38,6 @@ jobs:
           count_contributions() {
             local since_date="$1"
             local until_date="$2"
-            local day_key="$3"
             
             echo "Fetching contributions from $since_date to $until_date..."
             
@@ -157,39 +156,22 @@ jobs:
             echo "  Public events: $public_events"
             echo "  Total contributions: $total_contributions"
             
-            # Export values to GitHub Actions environment
-            echo "$day_key=$total_contributions" >> $GITHUB_ENV
-            echo "COMMITS_$day_key=$total_commits" >> $GITHUB_ENV
-            echo "OTHER_$day_key=$other_contributions" >> $GITHUB_ENV
-            
-            # Return success
-            return 0
+            # Return values using echo (can be captured by the caller)
+            echo "$total_contributions $total_commits $other_contributions"
           }
 
           # Count yesterday's contributions
           YESTERDAY_END_UTC=$(date -u -d "$YESTERDAY_START 23:59:59 +7 hours" +%Y-%m-%dT%H:%M:%SZ)
           echo "Counting yesterday's contributions from $YESTERDAY_START_UTC to $YESTERDAY_END_UTC"
-          count_contributions "$YESTERDAY_START_UTC" "$YESTERDAY_END_UTC" "TODAY_CONTRIBUTIONS"
           
-          # Set legacy environment variable for backward compatibility
-          if [ -n "${COMMITS_TODAY_CONTRIBUTIONS}" ]; then
-            echo "TODAY_COMMITS=${COMMITS_TODAY_CONTRIBUTIONS}" >> $GITHUB_ENV
-          else
-            echo "TODAY_COMMITS=0" >> $GITHUB_ENV
-          fi
+          # Capture function return values
+          TODAY_RESULTS=$(count_contributions "$YESTERDAY_START_UTC" "$YESTERDAY_END_UTC")
+          read -r TODAY_CONTRIBUTIONS TODAY_COMMITS OTHER_TODAY_CONTRIBUTIONS <<< "$TODAY_RESULTS"
           
-          # Default values if variables are not set
-          if [ -z "${TODAY_CONTRIBUTIONS}" ]; then
-            echo "TODAY_CONTRIBUTIONS=0" >> $GITHUB_ENV
-          fi
-          
-          if [ -z "${COMMITS_TODAY_CONTRIBUTIONS}" ]; then
-            echo "COMMITS_TODAY_CONTRIBUTIONS=0" >> $GITHUB_ENV
-          fi
-          
-          if [ -z "${OTHER_TODAY_CONTRIBUTIONS}" ]; then
-            echo "OTHER_TODAY_CONTRIBUTIONS=0" >> $GITHUB_ENV
-          fi
+          # Export values to GitHub Actions environment
+          echo "TODAY_CONTRIBUTIONS=$TODAY_CONTRIBUTIONS" >> $GITHUB_ENV
+          echo "TODAY_COMMITS=$TODAY_COMMITS" >> $GITHUB_ENV
+          echo "OTHER_TODAY_CONTRIBUTIONS=$OTHER_TODAY_CONTRIBUTIONS" >> $GITHUB_ENV
           
           # Get previous month data from README
           PREV_MONTH_CONTRIBUTIONS=0
@@ -208,42 +190,34 @@ jobs:
           # Count the entire month's contributions
           echo "Counting contributions for the entire month..."
           MONTH_END_UTC=$(date -u -d "$(date +%Y-%m-01) +1 month -1 day 23:59:59 +7 hours" +%Y-%m-%dT%H:%M:%SZ)
-          count_contributions "$MONTH_START_UTC" "$MONTH_END_UTC" "MONTH_ALL"
           
-          # Default values if variables are not set
-          if [ -z "${MONTH_ALL}" ]; then
-            echo "MONTH_ALL=0" >> $GITHUB_ENV
-          fi
-          
-          if [ -z "${COMMITS_MONTH_ALL}" ]; then
-            echo "COMMITS_MONTH_ALL=0" >> $GITHUB_ENV
-          fi
+          # Capture function return values for month
+          MONTH_RESULTS=$(count_contributions "$MONTH_START_UTC" "$MONTH_END_UTC")
+          read -r MONTH_ALL COMMITS_MONTH_ALL OTHER_MONTH_ALL <<< "$MONTH_RESULTS"
           
           # Determine final month totals
           if [[ "$PREV_MONTH" != "$CURRENT_MONTH" || "$PREV_MONTH_CONTR" != "$CURRENT_MONTH" ]]; then
             echo "New month detected or first run, using fresh counts"
-            MONTH_CONTRIBUTIONS=${MONTH_ALL:-0}
-            MONTH_COMMITS=${COMMITS_MONTH_ALL:-0}
+            MONTH_CONTRIBUTIONS=$MONTH_ALL
+            MONTH_COMMITS=$COMMITS_MONTH_ALL
           else
             echo "Same month, using previous counts plus yesterday's contributions"
             # Use the stored counts and add yesterday's to them
-            TODAY_CONTRIBUTIONS=${TODAY_CONTRIBUTIONS:-0}
-            COMMITS_TODAY_CONTRIBUTIONS=${COMMITS_TODAY_CONTRIBUTIONS:-0}
             MONTH_CONTRIBUTIONS=$((PREV_MONTH_CONTRIBUTIONS + TODAY_CONTRIBUTIONS))
-            MONTH_COMMITS=$((PREV_MONTH_COMMITS + COMMITS_TODAY_CONTRIBUTIONS))
+            MONTH_COMMITS=$((PREV_MONTH_COMMITS + TODAY_COMMITS))
           fi
           
-          # Make sure all variables have values
-          echo "MONTH_CONTRIBUTIONS=${MONTH_CONTRIBUTIONS:-0}" >> $GITHUB_ENV
-          echo "MONTH_COMMITS=${MONTH_COMMITS:-0}" >> $GITHUB_ENV
+          # Export month values to GitHub Actions environment
+          echo "MONTH_CONTRIBUTIONS=$MONTH_CONTRIBUTIONS" >> $GITHUB_ENV
+          echo "MONTH_COMMITS=$MONTH_COMMITS" >> $GITHUB_ENV
           echo "CURRENT_MONTH=$CURRENT_MONTH" >> $GITHUB_ENV
           
           echo "Final Summary:"
-          echo "  Yesterday's commits: ${COMMITS_TODAY_CONTRIBUTIONS:-0}"
-          echo "  Yesterday's other contributions: ${OTHER_TODAY_CONTRIBUTIONS:-0}"
-          echo "  Yesterday's total contributions: ${TODAY_CONTRIBUTIONS:-0}"
-          echo "  This month's commits: ${MONTH_COMMITS:-0}"
-          echo "  This month's total contributions: ${MONTH_CONTRIBUTIONS:-0}"
+          echo "  Yesterday's commits: $TODAY_COMMITS"
+          echo "  Yesterday's other contributions: $OTHER_TODAY_CONTRIBUTIONS"
+          echo "  Yesterday's total contributions: $TODAY_CONTRIBUTIONS"
+          echo "  This month's commits: $MONTH_COMMITS"
+          echo "  This month's total contributions: $MONTH_CONTRIBUTIONS"
 
       - name: Update README
         run: |
