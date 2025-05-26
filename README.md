@@ -8,15 +8,15 @@
 
   ### 👩‍💻 Python, Golang, Langchain, AI-SDK, Hadoop, Apache Spark
 
-  <!-- TODAY_CONTRIBUTIONS: 1 -->
-  <!-- MONTH_CONTRIBUTIONS: 176 2025-05 -->
-  ![Today's Contributions](https://img.shields.io/badge/Today's%20Contributions-1-purple)
-  ![This Month's Contributions](https://img.shields.io/badge/This%20Month's%20Contributions-176-orange)
+  <!-- TODAY_CONTRIBUTIONS: 8 -->
+  <!-- MONTH_CONTRIBUTIONS: 190 2025-05 -->
+  ![Today's Contributions](https://img.shields.io/badge/Today's%20Contributions-8-purple)
+  ![This Month's Contributions](https://img.shields.io/badge/This%20Month's%20Contributions-190-orange)
 
-  <!-- TODAY_COMMITS: 1 -->
-  <!-- MONTH_COMMITS: 132 2025-05 -->
-  ![Today's Commits](https://img.shields.io/badge/Today's%20Commits-1-blue)
-  ![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-132-green)
+  <!-- TODAY_COMMITS: 8 -->
+  <!-- MONTH_COMMITS: 143 2025-05 -->
+  ![Today's Commits](https://img.shields.io/badge/Today's%20Commits-8-blue)
+  ![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-143-green)
   
   I'm happy to connect & discuss!
   
