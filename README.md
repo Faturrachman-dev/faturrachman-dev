@@ -19,8 +19,8 @@
   ![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-6-green)
   
   I'm happy to connect & discuss!   
-  *Mey 2025 update: currently i have job out of development, so i may do codes less frequent than before.. 
-  but it's not stopping me to learn more! and hit me by DM if you want to discuss anything :)*
+  *Mey 2025 update: currently i have job out of development, so i may do codes less frequent than before..   
+  but it's not stopping me to learn more! and hit me by DM if you want to discuss or say anything :)*
   
   
 </div>
