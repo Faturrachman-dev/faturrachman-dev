@@ -2,7 +2,7 @@
   
   ![Banner GIF](images/desktop-neon-gaming.gif)
 
-  # Hi, 👋 I'm Faturrachman
+  # Hi 👋
 
   ## 💻 Data and Automation Engineer | Machine Learning Engineer Cohort at Coding-Camp DBS Foundation | CompTIA IT Certified | AI Agents Developer
 
@@ -20,7 +20,7 @@
   
   I'm happy to connect & discuss!   
   *June 2025 update: currently i have job out of development, so i may do codes less frequent than before..   
-  but it's not stopping me to learn more! and hit me by DM if you want to discuss or say anything :)*
+  but it's not stopping me to learn more! so hit me by DM if you want to discuss or say anything :)*
   
   
 </div>
