@@ -8,15 +8,15 @@
 
   ### 👩‍💻 Python, Kotlin, Langchain, AI-SDK, Hadoop, Apache Spark
 
-  <!-- TODAY_CONTRIBUTIONS: 1 -->
-  <!-- MONTH_CONTRIBUTIONS: 12 2026-04 -->
-  ![Today's Contributions](https://img.shields.io/badge/Today's%20Contributions-1-purple)
-  ![This Month's Contributions](https://img.shields.io/badge/This%20Month's%20Contributions-12-orange)
+  <!-- TODAY_CONTRIBUTIONS: 0 -->
+  <!-- MONTH_CONTRIBUTIONS: 13 2026-04 -->
+  ![Today's Contributions](https://img.shields.io/badge/Today's%20Contributions-0-purple)
+  ![This Month's Contributions](https://img.shields.io/badge/This%20Month's%20Contributions-13-orange)
 
-  <!-- TODAY_COMMITS: 1 -->
-  <!-- MONTH_COMMITS: 9 2026-04 -->
-  ![Today's Commits](https://img.shields.io/badge/Today's%20Commits-1-blue)
-  ![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-9-green)
+  <!-- TODAY_COMMITS: 0 -->
+  <!-- MONTH_COMMITS: 10 2026-04 -->
+  ![Today's Commits](https://img.shields.io/badge/Today's%20Commits-0-blue)
+  ![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-10-green)
   
   *June 2025 update: currently i have job out of app development, so i may do codes less frequent than before..   
   but it's not stopping me to learn more! DM does stil open tho :D*
