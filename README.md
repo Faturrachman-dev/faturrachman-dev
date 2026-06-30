@@ -9,14 +9,14 @@
   ### 👩‍💻 Python, Kotlin, Langchain, AI-SDK, Hadoop, Apache Spark
 
   <!-- TODAY_CONTRIBUTIONS: 1 -->
-  <!-- MONTH_CONTRIBUTIONS: 97 2026-06 -->
+  <!-- MONTH_CONTRIBUTIONS: 0 2026-07 -->
   ![Today's Contributions](https://img.shields.io/badge/Today's%20Contributions-1-purple)
-  ![This Month's Contributions](https://img.shields.io/badge/This%20Month's%20Contributions-97-orange)
+  ![This Month's Contributions](https://img.shields.io/badge/This%20Month's%20Contributions-0-orange)
 
   <!-- TODAY_COMMITS: 1 -->
-  <!-- MONTH_COMMITS: 73 2026-06 -->
+  <!-- MONTH_COMMITS: 0 2026-07 -->
   ![Today's Commits](https://img.shields.io/badge/Today's%20Commits-1-blue)
-  ![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-73-green)
+  ![This Month's Commits](https://img.shields.io/badge/This%20Month's%20Commits-0-green)
   
   *June 2025 update: currently i have job out of app development, so i may do codes less frequent than before..   
   but it's not stopping me to learn more! DM does stil open tho :D*
